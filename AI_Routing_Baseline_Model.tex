@@ -1,0 +1,379 @@
+% Stand-alone baseline model. Compile with pdfLaTeX on Overleaf.
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[hidelinks]{hyperref}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prb}{\mathbb{P}}
+\newtheorem{assumption}{Assumption}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+
+\title{AI-Assisted Patient Routing in Hybrid Healthcare:\\A Baseline Model with Complementary Information}
+\author{Working draft}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This note develops a tractable baseline model of AI-assisted routing in a hybrid healthcare system.  A patient's condition is latent.  The patient has a private, imperfect signal based on symptoms and personal history, whereas the AI observes a separate imperfect signal based on intake data, electronic health records, and clinical rules.  The AI recommends virtual or in-person care.  A rational patient combines their private signal and the recommendation, then chooses a channel.  Virtual care may fail and generate reentrant demand for in-person service.  The model derives posterior beliefs, an endogenous compliance rule, queueing equilibrium conditions, and testable results on information, selection, and congestion.
+\end{abstract}
+
+\section{Introduction}
+
+Healthcare providers are increasingly using AI tools to direct patients to virtual or in-person care.  The operational promise is substantial: a suitable virtual encounter can save travel and release scarce physical capacity.  The risk is equally important: an unsuitable virtual encounter can delay appropriate treatment and create a second in-person visit.  This reentry links the prediction made by an AI system to congestion in the downstream physical queue.
+
+An AI recommendation is not, however, an assignment.  Patients have information that is difficult to encode in an intake form---for example, symptom progression, pain, and prior treatment experience.  At the same time, the provider's AI may use information unavailable or difficult for a patient to interpret, such as electronic health records, medication interactions, and patterns learned from earlier cases.  The patient must decide whether to use virtual or in-person care after seeing the recommendation.  This creates the following research question:
+\begin{quote}
+\emph{How should a hospital use AI-assisted recommendations when patients rationally combine their own information with the AI's information, and virtual-care failures generate congestion through reentrant demand?}
+\end{quote}
+
+The point of the baseline is to make an AI recommendation valuable because it conveys \emph{information}, not because patients mechanically trust it.  The model therefore does not contain a reduced-form trust parameter such as $\gamma$.  A recommendation changes behavior only when it changes a patient's posterior assessment of whether virtual care will work.
+
+The baseline is designed to deliver four results.  First, it characterizes endogenous compliance and rational overrides.  Second, it shows that routing changes the composition, not merely the volume, of virtual demand.  Third, it establishes the existence of a patient--queue equilibrium.  Fourth, it separates the fixed-congestion value of more information from its ambiguous equilibrium effect once congestion responds.  These results create a disciplined foundation for a subsequent model in which the hospital optimizes capacity and its routing threshold.
+
+\section{Primitives}
+
+\subsection{Latent clinical state and signals}
+
+Patients arrive at rate $\Lambda$.  Each patient has a latent clinical complexity state
+\[
+ \theta\in\{0,1\},\qquad \Prb(\theta=1)=\rho,
+\]
+where $\theta=0$ is a low-complexity case and $\theta=1$ is a high-complexity case.  The binary state is a deliberate baseline simplification; it permits transparent posterior and equilibrium characterizations.  A continuum of severities can be introduced after the baseline results are established.
+
+The patient observes a private signal $X\in\{0,1\}$ and the AI observes a signal $S\in\{0,1\}$.  Conditional on $\theta$, signals are independent and satisfy
+\begin{align}
+ \Prb(X=\theta\mid\theta)&=a, & a\in(1/2,1),\\
+ \Prb(S=\theta\mid\theta)&=q, & q\in(1/2,1).
+ \label{eq:accuracies}
+\end{align}
+The patient signal represents self-knowledge; the AI signal represents the predictive content of provider-side data.  Conditional independence means that each carries some information not already contained in the other.  The parameters $a$ and $q$ are signal accuracies, not compliance parameters.
+
+The AI uses the clinically natural recommendation rule
+\begin{equation}
+ R(S)=
+ \begin{cases}
+ V,&S=0,\\
+ F,&S=1,
+ \end{cases}
+ \label{eq:recommendation}
+\end{equation}
+where $V$ and $F$ denote virtual and in-person care.  In this baseline, the recommendation is a coarsened disclosure of the AI signal.  Because the rule is one-to-one, observing $R$ is equivalent to observing $S$.  A later provider-design model will let the provider choose a continuous-score threshold and possibly the information disclosed to patients.
+
+\subsection{Virtual-care failure and reentry}
+
+Virtual care resolves a low-complexity case with a higher probability than a high-complexity case.  Conditional on the latent state,
+\begin{equation}
+ \Prb(\text{virtual care fails}\mid\theta=j)=\delta_j,
+ \qquad 0<\delta_0<\delta_1<1.
+ \label{eq:failure}
+\end{equation}
+Failure means that the patient must subsequently obtain in-person service.  The actual failure outcome is Bernoulli; patients of the same state have the same conditional probability, but patients are heterogeneous because they differ in their posterior likelihood of being high complexity.
+
+Let $k>0$ be the non-queueing loss caused by a failed virtual encounter.  It represents delay, additional diagnostic risk, inconvenience, or anxiety that remains even after the patient receives follow-up care.  It is intentionally separate from future travel and waiting costs, which are explicitly included below.  This separation avoids double-counting reentry.
+
+\subsection{Queues and patient cost}
+
+The provider maintains dedicated virtual and in-person capacities $(\mu_V,\mu_F)$.  Let $W_V$ and $W_F$ be the equilibrium mean waits.  A patient who selects in-person care incurs expected generalized cost
+\begin{equation}
+ C_F=c_F+T+\beta W_F\equiv K_F,
+ \label{eq:physicalcost}
+\end{equation}
+where $c_F$ is the monetary or time cost of an in-person encounter, $T$ is travel burden, and $\beta$ converts waiting time into cost.
+
+After observing $(X,R)=(x,r)$, the patient forms a posterior failure probability $d_{xr}$.  Virtual care has expected generalized cost
+\begin{equation}
+ C_V(x,r)=c_V+\beta W_V+d_{xr}\big(k+K_F\big).
+ \label{eq:virtualcost}
+\end{equation}
+The final term is essential: with probability $d_{xr}$, the patient experiences the failure loss $k$ and subsequently pays the in-person cost $K_F$.  The model normalizes the benefit of a successfully resolved clinical episode to be the same across channels.  A balking option can be added by comparing both costs with an outside option; it is omitted here to isolate routing and reentry.
+
+\subsection{Hospital decision, timing, and trade-offs}
+
+The game has two stages.  In Stage~0, the hospital has total service capacity $\mu$ and selects a dedicated virtual capacity $\mu_V\in[0,\mu]$, with $\mu_F=\mu-\mu_V$.  The hospital also deploys the clinically natural recommendation rule in Equation~\eqref{eq:recommendation}.  In Stage~1, patients observe their private signal and the recommendation, choose a channel, and queues form.  The baseline treats the hospital's capacity allocation and recommendation rule as policy parameters in order to solve the patient--queue equilibrium cleanly.
+
+The hospital's available operational choices and trade-offs are as follows.  Increasing $\mu_V$ lowers virtual waiting time and can make virtual care attractive to more patients, but it reduces $\mu_F$ and can worsen physical congestion.  This is especially consequential because a virtual patient who fails subsequently consumes physical capacity.  Conversely, concentrating capacity in person reduces the risk of virtual delay and reentry but sacrifices virtual access and its travel-saving benefit.  In the next model, the hospital will choose $\mu_V$ together with an AI-routing threshold to maximize a stated objective, such as
+\[
+ \Pi=r_V\lambda_V+r_F(\lambda_F+\lambda_R)-C(\mu_V,\mu_F),
+\]
+where the reimbursement treatment of reentrant encounters can be tailored to the institutional setting.
+
+Patients have two available actions in the baseline: choose $V$ or choose $F$.  They trade a lower direct access burden and potentially shorter virtual wait against the risk of failure, a second encounter, and a later physical wait.  The absence of an outside option is purposeful: it avoids conflating routing with market participation in the first theorem set.  The outside option is introduced explicitly as an extension below.
+
+\section{Bayesian updating and endogenous compliance}
+
+\subsection{Posterior belief}
+
+Let $\pi_{xr}=\Prb(\theta=1\mid X=x,R=r)$.  Bayes' rule gives the posterior odds
+\begin{equation}
+ \frac{\pi_{xr}}{1-\pi_{xr}}
+ =\frac{\rho}{1-\rho}
+ \left(\frac{a}{1-a}\right)^{2x-1}
+ \left(\frac{q}{1-q}\right)^{2r-1}.
+ \label{eq:posterior}
+\end{equation}
+Thus, the posterior virtual-failure probability is
+\begin{equation}
+ d_{xr}=\delta_0+(\delta_1-\delta_0)\pi_{xr}.
+ \label{eq:posteriorfailure}
+\end{equation}
+
+Equation~\eqref{eq:posterior} is the model's information mechanism.  The patient neither blindly follows nor mechanically ignores the AI.  Instead, the patient uses the recommendation as a second signal about a latent condition.
+
+\begin{theorem}[Posterior ordering]
+If $a,q\in(1/2,1)$, then $\pi_{x1}>\pi_{x0}$ for each $x$, and $\pi_{1r}>\pi_{0r}$ for each $r$.  Consequently, $d_{x1}>d_{x0}$ and $d_{1r}>d_{0r}$.
+\end{theorem}
+
+\noindent\emph{Intuition.}  A high patient signal and an in-person AI recommendation are both evidence of high complexity.  Since high-complexity cases are more likely to fail virtually, either piece of evidence increases the expected failure risk.  The complete proof appears in Appendix~A.
+
+\subsection{Channel choice}
+
+The patient chooses virtual care when $C_V(x,r)\leq C_F$.  Equivalently,
+\begin{equation}
+ d_{xr}\leq d^*(W_V,W_F)
+ \equiv
+ \frac{K_F-c_V-\beta W_V}{K_F+k}.
+ \label{eq:cutoff}
+\end{equation}
+If $d^*\leq 0$, no patient chooses virtual care; if $d^*\geq 1$, every patient does.  The economically interesting case has $d^*\in(0,1)$.
+
+\begin{theorem}[Cutoff characterization and rational compliance]
+For fixed waiting times, a patient chooses virtual care if and only if their posterior virtual-failure probability is at most $d^*$.  Holding private information $X=x$ fixed, an in-person recommendation strictly shifts the patient toward in-person care.  In particular:
+\begin{align*}
+ &d_{x0}\leq d^*<d_{x1}
+ &&\Longrightarrow&& \text{the patient follows either recommendation};\\
+ &d_{10}>d^*
+ &&\Longrightarrow&& \text{a high-symptom patient overrides a virtual recommendation};\\
+ &d_{01}\leq d^*
+ &&\Longrightarrow&& \text{a low-symptom patient overrides an in-person recommendation}.
+\end{align*}
+\end{theorem}
+
+\noindent\emph{Interpretation.}  Overrides are not ``noncompliance errors.''  They arise when a patient's private information, combined with the AI recommendation, makes the alternative channel optimal.  The second and third statements formalize the two practically important cases: a patient who feels their condition is serious may reject virtual care, while a patient who feels it is minor may reject an in-person recommendation.
+
+\begin{proposition}[When recommendations have no behavioral effect]
+If $q=1/2$, then $d_{x0}=d_{x1}$ for every $x$, so the recommendation has no effect on rational patient choice.  More generally, the recommendation is behaviorally active for private-signal group $x$ if and only if $d_{x0}\leq d^*<d_{x1}$.
+\end{proposition}
+
+\noindent\emph{Intuition.}  A recommendation matters only if it supplies information beyond what the patient already knows and moves the patient's posterior risk across the virtual-care cutoff.  A perfectly uninformative AI should not affect a rational patient.  Proofs of the cutoff theorem and this proposition are in Appendix~A.
+
+\section{Queueing equilibrium and solution method}
+
+Let
+\begin{equation}
+ m_{xr}=\Prb(X=x,R=r), \qquad x,r\in\{0,1\}.
+ \label{eq:cellmass}
+\end{equation}
+These four masses are obtained directly from $\rho$, $a$, and $q$.  For example,
+\[
+ m_{11}=\rho aq+(1-\rho)(1-a)(1-q),
+\]
+and the remaining masses are analogous.  Let $y_{xr}\in[0,1]$ be the share of cell $(x,r)$ that chooses virtual care.  Away from indifference, $y_{xr}$ is either zero or one; mixing is allowed only when $d_{xr}=d^*$.
+
+The direct virtual load, direct in-person load, and reentrant load are
+\begin{align}
+ \lambda_V(y)&=\Lambda\sum_{x,r}m_{xr}y_{xr}, \label{eq:lv}\\
+ \lambda_F(y)&=\Lambda\sum_{x,r}m_{xr}(1-y_{xr}), \label{eq:lf}\\
+ \lambda_R(y)&=\Lambda\sum_{x,r}m_{xr}y_{xr}d_{xr}. \label{eq:lr}
+\end{align}
+Under M/M/1 queues,
+\begin{equation}
+ W_V(y)=\frac{1}{\mu_V-\lambda_V(y)},
+ \qquad
+ W_F(y)=\frac{1}{\mu_F-\lambda_F(y)-\lambda_R(y)}.
+ \label{eq:waits}
+\end{equation}
+An equilibrium is a vector $y^*$ such that, for every information cell,
+\begin{equation}
+ y^*_{xr}\begin{cases}
+ =1,&d_{xr}<d^*(W_V(y^*),W_F(y^*)),\\
+ =0,&d_{xr}>d^*(W_V(y^*),W_F(y^*)),\\
+ \in[0,1],&d_{xr}=d^*(W_V(y^*),W_F(y^*)).
+ \end{cases}
+ \label{eq:equilibrium}
+\end{equation}
+
+\begin{theorem}[Existence of a patient-routing equilibrium]
+Suppose $\mu_V>\Lambda$ and $\mu_F>\Lambda$.  Then an equilibrium satisfying Equation~\eqref{eq:equilibrium} exists.
+\end{theorem}
+
+\noindent\emph{Intuition.}  For any conjectured channel choices, waiting times are well defined; given those waits, every information cell has a well-defined optimal action.  The equilibrium is a fixed point between these two objects.  The capacity condition is sufficient, rather than necessary, and rules out instability for every possible routing profile.  A complete fixed-point proof appears in Appendix~A.
+
+\paragraph{Exact solution procedure.}
+The binary-signal model is computationally and analytically convenient.  For a pure candidate profile $y\in\{0,1\}^4$, compute the three arrival rates from Equations~\eqref{eq:lv}--\eqref{eq:lr}, calculate waits from Equation~\eqref{eq:waits}, and check the four inequalities in Equation~\eqref{eq:equilibrium}.  There are only $2^4=16$ candidate profiles.  If an equality holds, solve for the appropriate mixed share.  This procedure solves the baseline equilibrium without simulation.
+
+\section{Results}
+
+\begin{proposition}[Composition effect of AI-assisted routing]
+At any deterministic equilibrium, virtual users are selected from the lowest posterior-failure cells.  If some, but not all, cells choose virtual care, then
+\begin{equation}
+ \frac{\lambda_R}{\lambda_V}
+ =\frac{\sum_{x,r}m_{xr}y_{xr}d_{xr}}
+ {\sum_{x,r}m_{xr}y_{xr}}
+ <\sum_{x,r}m_{xr}d_{xr}.
+ \label{eq:composition}
+\end{equation}
+Thus, the virtual cohort's expected reentry probability is below the market-wide average.
+\end{proposition}
+
+\noindent\emph{Interpretation.}  A provider cannot evaluate routing using the virtual-care share alone.  Two policies that send the same number of patients to virtual care can create very different physical congestion if their virtual cohorts have different posterior failure risks.
+
+\begin{theorem}[Value of complementary information at fixed congestion]
+Fix $(W_V,W_F)$.  Before the AI recommendation is observed, a patient can choose a channel using $X$ alone or using $(X,R)$.  The latter information structure weakly lowers the patient's expected generalized treatment cost.  The improvement is strict if there exists an $x$ such that $d_{x0}\leq d^*<d_{x1}$.
+\end{theorem}
+
+\noindent\emph{Intuition.}  An additional signal cannot hurt a rational patient when queue conditions are held fixed: the patient can simply ignore it.  It strictly helps only when the recommendation changes the preferred channel for some patients.  The distinction ``at fixed congestion'' is crucial; the equilibrium congestion effect may overturn a simple monotonic welfare conclusion.  The proof is in Appendix~A.
+
+\begin{remark}[Why this is not a global ``better AI always helps'' result]
+The preceding theorem holds with waiting times fixed.  In equilibrium, more informative AI may change virtual demand, reentry, and both waits.  Therefore an increase in $q$ need not reduce $W_V$ or $W_F$, and it need not increase provider profit or social welfare.  This congestion feedback is the main reason to embed Bayesian triage in a queueing model.
+\end{remark}
+
+\begin{proposition}[Patient discretion is valuable under AI error]
+Suppose the AI recommends virtual care to a patient whose private signal is high ($X=1$), but $d_{10}>d^*$.  Mandatory routing sends this patient to virtual care; rational advice sends them directly to in-person care and strictly lowers this patient's expected generalized cost.  Symmetrically, if $d_{01}\leq d^*$, discretion strictly lowers the expected generalized cost of a low-symptom patient whom the AI recommends for in-person care.
+\end{proposition}
+
+\noindent\emph{Intuition.}  Discretion allows a patient to use information that the AI did not observe.  It does not automatically reduce physical congestion: direct in-person care uses physical capacity with certainty, whereas a failed virtual encounter uses it only with some probability but also consumes virtual capacity and imposes failure loss.  The hospital-level comparison is therefore an equilibrium question, not a mechanical implication of patient discretion.  The proof is in Appendix~A.
+
+\section{Extensions and next analytical stage}
+
+The binary-state, binary-signal model should be retained for the first theorem set because it isolates complementary information, rational overrides, reentry, and congestion.  The following extensions build directly on it.
+
+\subsection{Joint hospital design of capacity and routing}
+
+The hospital will choose capacity allocation and a routing threshold after anticipating the patient equilibrium.  Let $s\in[0,1]$ be a calibrated continuous AI risk score, interpreted as the AI's estimated probability that virtual care will fail using provider-side data.  The hospital selects $\tau\in[0,1]$ and recommends
+\[
+ R(s;\tau)=
+ \begin{cases}
+ V,&s\leq\tau,\\
+ F,&s>\tau.
+ \end{cases}
+\]
+It simultaneously chooses $\mu_V$, with $\mu_F=\mu-\mu_V$.  A higher $\tau$ routes more cases toward virtual care; a higher $\mu_V$ makes that route more attractive by reducing virtual waits.  Both decisions can also increase the risk of reentry and physical congestion.  The objective is to characterize and compare the prediction-optimal, provider-optimal, and welfare-optimal thresholds.  They need not coincide because the two classification errors have different downstream queueing costs.
+
+\subsection{Continuous severity, outside option, and endogenous market participation}
+
+Replace the binary state by $\theta\in[0,1]$.  The patient and AI observe conditionally independent noisy signals of $\theta$, and the AI produces the continuous score $s$.  Patients then choose from
+\[
+ \{V,F,B\},
+\]
+where $B$ is an outside option with normalized utility zero.  A patient enters virtual care only if its expected utility exceeds both in-person care and the outside option; analogous conditions apply to in-person entry.  This extension lets congestion affect not only channel composition but also total demand and access.  The main question is whether a more permissive AI threshold expands access or instead triggers enough congestion and reentry to cause marginal patients to balk.
+
+\subsection{Priority for reentrant patients}
+
+The in-person queue can be divided into direct in-person patients and patients returning after failed virtual care.  The hospital then selects a priority rule, such as nonpreemptive priority for return patients or a reserved follow-up capacity level.  Let $W_N$ and $W_R$ denote the waits of new and returning in-person patients.  A virtual patient's expected cost becomes
+\[
+ c_V+\beta W_V+d\big(k+c_F+T+\beta W_R\big).
+\]
+Priority improves recovery after a failed virtual visit by lowering $W_R$, but it can also make virtual care more attractive ex ante and increase reentry.  It may additionally worsen $W_N$ for direct in-person patients.  This extension therefore creates a prevention-versus-recovery trade-off: invest in better ex-ante routing, or make virtual-care failure less costly through better ex-post service.
+
+These extensions deliberately do not introduce heterogeneity in travel burden or waiting sensitivity.  Such heterogeneity can be valuable in a later empirical or equity-focused model, but it is not required to establish the paper's central information--routing--congestion mechanism.
+
+\appendix
+\section{Proofs}
+
+\subsection{Proof of Theorem 1: Posterior ordering}
+
+For a fixed $x$, Equation~\eqref{eq:posterior} implies
+\[
+ \frac{\pi_{x1}/(1-\pi_{x1})}{\pi_{x0}/(1-\pi_{x0})}
+ =\left(\frac{q}{1-q}\right)^2>1,
+\]
+because $q>1/2$.  Since $z\mapsto z/(1+z)$ is strictly increasing for $z>0$, this yields $\pi_{x1}>\pi_{x0}$.  Similarly, for a fixed $r$,
+\[
+ \frac{\pi_{1r}/(1-\pi_{1r})}{\pi_{0r}/(1-\pi_{0r})}
+ =\left(\frac{a}{1-a}\right)^2>1,
+\]
+so $\pi_{1r}>\pi_{0r}$.  Finally, Equation~\eqref{eq:posteriorfailure} is affine with strictly positive slope $\delta_1-\delta_0$.  The same two inequalities therefore hold for $d_{xr}$.
+
+\subsection{Proof of Theorem 2: Cutoff characterization and rational compliance}
+
+Using Equations~\eqref{eq:physicalcost} and \eqref{eq:virtualcost}, virtual care is weakly preferred exactly when
+\begin{align*}
+ c_V+\beta W_V+d_{xr}(k+K_F)&\leq K_F,\\
+ d_{xr}&\leq\frac{K_F-c_V-\beta W_V}{K_F+k}=d^*.
+\end{align*}
+The denominator is strictly positive because $K_F>0$ and $k>0$.  This proves the cutoff characterization.
+
+By Theorem~1, $d_{x1}>d_{x0}$ for every $x$.  Hence, holding $X=x$ fixed, changing the recommendation from $V$ to $F$ increases posterior failure risk and weakly shifts the optimal action toward $F$.  If $d_{x0}\leq d^*<d_{x1}$, the patient chooses $V$ after an AI recommendation of $V$ and $F$ after an AI recommendation of $F$.  If $d_{10}>d^*$, a patient with $X=1$ chooses $F$ despite $R=V$; if $d_{01}\leq d^*$, a patient with $X=0$ chooses $V$ despite $R=F$.  These are precisely the claimed override conditions.
+
+\subsection{Proof of Proposition 1: When recommendations have no behavioral effect}
+
+If $q=1/2$, the final factor in Equation~\eqref{eq:posterior} equals one for both $r=0$ and $r=1$.  Thus $\pi_{x0}=\pi_{x1}$ and, by Equation~\eqref{eq:posteriorfailure}, $d_{x0}=d_{x1}$.  The recommendation therefore cannot change which side of the cutoff in Equation~\eqref{eq:cutoff} the patient occupies.
+
+For $q>1/2$, Theorem~1 gives $d_{x0}<d_{x1}$.  The recommendation produces different actions for signal group $x$ exactly when the virtual recommendation leads to $d_{x0}\leq d^*$ and the in-person recommendation leads to $d_{x1}>d^*$.  This is equivalent to $d_{x0}\leq d^*<d_{x1}$.
+
+\subsection{Proof of Theorem 3: Existence of a patient-routing equilibrium}
+
+Let $Y=[0,1]^4$ be the compact and convex set of possible vectors $y=(y_{00},y_{01},y_{10},y_{11})$.  For every $y\in Y$, Equations~\eqref{eq:lv}--\eqref{eq:lr} imply
+\[
+ 0\leq\lambda_V(y)\leq\Lambda
+\quad\text{and}\quad
+ 0\leq\lambda_F(y)+\lambda_R(y)
+ =\Lambda\sum_{x,r}m_{xr}\bigl[1-y_{xr}+y_{xr}d_{xr}\bigr]\leq\Lambda,
+\]
+where the final inequality follows from $d_{xr}\in(0,1)$.  Under $\mu_V>\Lambda$ and $\mu_F>\Lambda$, both denominators in Equation~\eqref{eq:waits} are strictly positive for all $y\in Y$.  Thus $W_V(y)$, $W_F(y)$, and $d^*(W_V(y),W_F(y))$ are continuous on $Y$.
+
+For each cell $(x,r)$, define the best-response correspondence
+\[
+ B_{xr}(y)=
+ \begin{cases}
+ \{1\},& d_{xr}<d^*(W_V(y),W_F(y)),\\
+ \{0\},& d_{xr}>d^*(W_V(y),W_F(y)),\\
+ [0,1],& d_{xr}=d^*(W_V(y),W_F(y)).
+ \end{cases}
+\]
+Each $B_{xr}$ is nonempty, convex-valued, and upper hemicontinuous because it is determined by comparison of a constant with a continuous function, with the full interval assigned at equality.  The product correspondence $B(y)=\prod_{x,r}B_{xr}(y)$ inherits these properties and maps $Y$ into itself.  Kakutani's fixed-point theorem therefore yields $y^*\in B(y^*)$, which is exactly Equation~\eqref{eq:equilibrium}.
+
+\subsection{Proof of Proposition 2: Composition effect of AI-assisted routing}
+
+At a deterministic equilibrium, $y_{xr}=1$ exactly for cells satisfying $d_{xr}\leq d^*$, and $y_{xr}=0$ exactly for cells satisfying $d_{xr}>d^*$.  Let $D=d_{XR}$ and let $Y_V$ be the indicator that the patient chooses virtual care.  Equations~\eqref{eq:lv} and \eqref{eq:lr} give
+\[
+ \frac{\lambda_R}{\lambda_V}=\E[D\mid Y_V=1].
+\]
+If some but not all cells select $V$, all selected cells have failure risks weakly below $d^*$ and all unselected cells have risks strictly above $d^*$.  Hence
+\[
+ \E[D\mid Y_V=1]<\E[D\mid Y_V=0].
+\]
+Writing $p=\Prb(Y_V=1)\in(0,1)$ and applying the law of total expectation,
+\[
+ \E[D]=p\E[D\mid Y_V=1]+(1-p)\E[D\mid Y_V=0]
+ >\E[D\mid Y_V=1].
+\]
+Because $\E[D]=\sum_{x,r}m_{xr}d_{xr}$, this proves Equation~\eqref{eq:composition}.
+
+\subsection{Proof of Theorem 4: Value of complementary information at fixed congestion}
+
+Fix $(W_V,W_F)$.  Let $\mathcal{D}_X$ be the set of channel-choice rules measurable with respect to $X$, and let $\mathcal{D}_{XR}$ be the corresponding set measurable with respect to $(X,R)$.  Since any rule that uses $X$ alone can be implemented after observing $(X,R)$ while ignoring $R$, we have $\mathcal{D}_X\subseteq\mathcal{D}_{XR}$.  Therefore,
+\[
+ \min_{g\in\mathcal{D}_{XR}}\E[C_{g(X,R)}]
+ \leq
+ \min_{g\in\mathcal{D}_X}\E[C_{g(X)}].
+\]
+This proves weak improvement.
+
+If there exists $x$ with $d_{x0}\leq d^*<d_{x1}$, then the conditional cost difference $C_V-C_F$ is weakly negative after $R=0$ and strictly positive after $R=1$.  Since both recommendations occur with positive probability under $q\in(1/2,1)$, no rule based only on $X=x$ can choose the conditionally optimal action in both states.  A rule using $(X,R)$ can do so.  The inequality is therefore strict.
+
+\subsection{Proof of Proposition 3: Patient discretion under information conflict}
+
+For a patient with $(X,R)=(1,V)$, subtracting Equation~\eqref{eq:physicalcost} from Equation~\eqref{eq:virtualcost} gives
+\[
+ C_V(1,0)-C_F
+ =c_V+\beta W_V+d_{10}(k+K_F)-K_F
+ =(d_{10}-d^*)(k+K_F).
+\]
+If $d_{10}>d^*$, this difference is strictly positive.  A patient with discretion therefore chooses $F$, while mandatory routing to $V$ imposes a strictly greater expected generalized cost.  The symmetric calculation for $(X,R)=(0,F)$ is
+\[
+ C_F-C_V(0,1)=(d^*-d_{01})(k+K_F)>0
+\]
+when $d_{01}\leq d^*$, with strict inequality if $d_{01}<d^*$.  Thus discretion weakly, and generically strictly, improves the patient's expected generalized cost in the stated information-conflict cases.
+
+\end{document}
